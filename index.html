@@ -1,0 +1,343 @@
+<html>
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:300,400,700|Roboto:300,400,700" rel="stylesheet">
+    <link href="app.css" rel="stylesheet">
+    <script>
+
+        var copyLogConsole = function() {
+            /* Get the text field */
+            var copyText = document.getElementById("logConsole");
+
+            /* Select the text field */
+            copyText.select();
+
+            /* Copy the text inside the text field */
+            document.execCommand("Copy");
+
+            /* Alert the copied text */
+            alert("Copied the text: " + copyText.value);
+        }
+
+        /*
+ * JavaScript base64 / base64url encoder and decoder
+ */
+
+        var b64c = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"   // base64 dictionary
+        var b64u = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"   // base64url dictionary
+        var b64pad = '='
+
+        var logConsole = {
+            log: function(txt) {
+                document.getElementById("logConsole").innerHTML += "<p class=\"success\">&gt;&nbsp;" + txt + "</p>";
+            },
+            error: function(txt) {
+                document.getElementById("logConsole").innerHTML += "<p class=\"error\">&gt;&nbsp;" + txt + "</p>";
+            },
+            clear: function() {
+                document.getElementById("logConsole").innerHTML = "";
+            }
+        }
+
+        /* base64_encode_data
+         * Internal helper to encode data to base64 using specified dictionary.
+         */
+        function base64_encode_data(data, len, b64x) {
+            var dst = ""
+            var i
+
+            for (i = 0; i <= len - 3; i += 3)
+            {
+                dst += b64x.charAt(data.charCodeAt(i) >>> 2)
+                dst += b64x.charAt(((data.charCodeAt(i) & 3) << 4) | (data.charCodeAt(i+1) >>> 4))
+                dst += b64x.charAt(((data.charCodeAt(i+1) & 15) << 2) | (data.charCodeAt(i+2) >>> 6))
+                dst += b64x.charAt(data.charCodeAt(i+2) & 63)
+            }
+
+            if (len % 3 == 2)
+            {
+                dst += b64x.charAt(data.charCodeAt(i) >>> 2)
+                dst += b64x.charAt(((data.charCodeAt(i) & 3) << 4) | (data.charCodeAt(i+1) >>> 4))
+                dst += b64x.charAt(((data.charCodeAt(i+1) & 15) << 2))
+                dst += b64pad
+            }
+            else if (len % 3 == 1)
+            {
+                dst += b64x.charAt(data.charCodeAt(i) >>> 2)
+                dst += b64x.charAt(((data.charCodeAt(i) & 3) << 4))
+                dst += b64pad
+                dst += b64pad
+            }
+
+            return dst
+        }
+
+        /* base64_encode
+         * Encode a JavaScript string to base64.
+         * Specified string is first converted from JavaScript UCS-2 to UTF-8.
+         */
+        function base64_encode(str) {
+            var utf8str = unescape(encodeURIComponent(str))
+            return base64_encode_data(utf8str, utf8str.length, b64c)
+        }
+
+        /* base64url_encode
+         * Encode a JavaScript string to base64url.
+         * Specified string is first converted from JavaScript UCS-2 to UTF-8.
+         */
+        function base64url_encode(str) {
+            var utf8str = unescape(encodeURIComponent(str))
+            return base64_encode_data(utf8str, utf8str.length, b64u)
+        }
+
+        /* base64_charIndex
+         * Internal helper to translate a base64 character to its integer index.
+         */
+        function base64_charIndex(c) {
+            if (c == "+") return 62
+            if (c == "/") return 63
+            return b64u.indexOf(c)
+        }
+
+        /* base64_decode
+         * Decode a base64 or base64url string to a JavaScript string.
+         * Input is assumed to be a base64/base64url encoded UTF-8 string.
+         * Returned result is a JavaScript (UCS-2) string.
+         */
+        function base64_decode(data) {
+            var dst = ""
+            var i, a, b, c, d, z
+
+            for (i = 0; i < data.length - 3; i += 4) {
+                a = base64_charIndex(data.charAt(i+0))
+                b = base64_charIndex(data.charAt(i+1))
+                c = base64_charIndex(data.charAt(i+2))
+                d = base64_charIndex(data.charAt(i+3))
+
+                dst += String.fromCharCode((a << 2) | (b >>> 4))
+                if (data.charAt(i+2) != b64pad)
+                    dst += String.fromCharCode(((b << 4) & 0xF0) | ((c >>> 2) & 0x0F))
+                if (data.charAt(i+3) != b64pad)
+                    dst += String.fromCharCode(((c << 6) & 0xC0) | d)
+            }
+
+            //dst = decodeURIComponent(escape(dst))
+            return dst
+        }
+
+        /* base64url_sniff
+         * Check whether specified base64 string contains base64url specific characters.
+         * Return true if specified string is base64url encoded, false otherwise.
+         */
+        function base64url_sniff(base64) {
+            if (base64.indexOf("-") >= 0) return true
+            if (base64.indexOf("_") >= 0) return true
+            return false
+        }
+
+        var base64url = /^[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\-\_]*\=*$/
+
+        var check = function(logConsole) {
+
+            logConsole.clear();
+            document.getElementById("validEncKey").innerHTML = "";
+            document.getElementById("validSigKey").innerHTML = "";
+
+            var json = document.getElementById("jwkset").value;
+
+            var obj = JSON.parse(json);
+
+            if (obj.keys.length < 2) {
+                console.log("less than 2 keys in the JWKSet");
+            };
+
+            var nsig = 0;
+            obj.keys.forEach(function(jwk) {
+                if (jwk["use"] == "sig") {
+                    nsig++;
+                }
+            });
+
+            var nenc = 0;
+            obj.keys.forEach(function(jwk) {
+                if (jwk["use"] == "enc") {
+                    nenc++;
+                }
+            });
+
+            if (nsig==0) {
+                console.error("No sig key in set");
+            }
+
+            if (nenc==0) {
+                console.error("No enc key in set");
+            }
+
+            var encKid = document.getElementById("encKid").value;
+            var sigKid = document.getElementById("sigKid").value;
+
+            var hasValidSigKey = false;
+            var hasValidEncKey = false;
+
+            obj.keys.forEach(function(jwk) {
+
+                var kid = jwk["kid"];
+                var use = jwk["use"];
+                var validKey = null;
+
+                if ((kid == sigKid &&  use == "sig") || (kid == encKid && use == "enc")) {
+
+                    if (kid == sigKid &&  use == "sig") {
+                        logConsole.log(sigKid + " signature key found");
+                        validKey = document.getElementById("validSigKey");
+                    } else if (kid == encKid && use == "enc") {
+                        logConsole.log(encKid + " encryption key found");
+                        validKey = document.getElementById("validEncKey");
+                    } else return;
+
+                    if (jwk["kty"] != "RSA") {
+                        logConsole.error("Only RSA cryptographic algorithm family supported");
+                        validKey.innerHTML = "NOT VALID";
+                        validKey.className = "error";
+                        return;
+                    }
+
+                    var ekey = jwk["e"];
+                    var nkey = jwk["n"];
+
+                    if (ekey != "AQAB") {
+                        logConsole.error("the public key exponent e should be e = 216 + 1 = 65,537, i.e. 'AQAB' in base64url.");
+                        validKey.innerHTML = "NOT VALID";
+                        validKey.className = "error";
+                        return;
+                    }
+                    ;
+
+                    if (!base64url.test(nkey)) {
+                        logConsole.error("the public key modulus 'n' is not a base64url string.");
+                        validKey.innerHTML = "NOT VALID";
+                        validKey.className = "error";
+                        return;
+                    }
+
+                    // add padding if needed
+                    var k = nkey.length % 4;
+                    if (k > 0) for (var i = 0; i < 4 - k; i++) nkey += "=";
+                    logConsole.log("padded public key modulus 'n': " + nkey);
+
+                    var decoded = base64_decode(nkey);
+                    logConsole.log("base64url decoded key modulus 'n': " + decoded);
+                    logConsole.log("public key modulus 'n' length is " + decoded.length);
+
+                    if (decoded.length < 256) {
+                        logConsole.error("public key modulus 'n' is too short. Must be 256 bytes (2048bits) minimum.");
+                        validKey.innerHTML = "NOT VALID";
+                        validKey.className = "error";
+                        return;
+                    }
+
+                    if (kid == sigKid) {
+                        hasValidSigKey = true;
+                        logConsole.log(kid + " signature key is VALID");
+                    } else if (kid == encKid) {
+                        hasValidEncKey = true;
+                        logConsole.log(kid + " encryption key is VALID");
+                    }
+                }
+
+            });
+
+            if (hasValidEncKey) {
+                document.getElementById("validEncKey").innerHTML = "VALID";
+                document.getElementById("validEncKey").className = "success";
+            } else {
+                document.getElementById("validEncKey").innerHTML = "NOT VALID";
+                document.getElementById("validEncKey").className = "error";
+                logConsole.error("Enc key is not valid");
+            }
+
+            if (hasValidSigKey) {
+                document.getElementById("validSigKey").innerHTML = "VALID";
+                document.getElementById("validSigKey").className = "success";
+            } else {
+                document.getElementById("validSigKey").innerHTML = "NOT VALID";
+                document.getElementById("validSigKey").className = "error";
+                logConsole.error("Sig key is not valid");
+            }
+
+            return;
+
+        }
+    </script>
+    <body style="background-color: #343a40; color: white;">
+        <div style="padding: 1em; width: 1024px; ">
+            <h1 style="margin-bottom: 1em;"><img src="logo.png" height="80"/>itsme(r) JWKSet Toolbox</h1>
+            <h2>Check if your keys are compliant with itsme(r)</h2>
+            <div style="padding-left: 1em;">
+                <table style="width: 100%;">
+                    <tr>
+                        <td style="width: 30%;"><b>kid</b> of the signature key: </td>
+                        <td style="width: 30%;"><input type="text" id="sigKid" value="s1"/></td>
+                        <td style="font-size:32px; line-height: 32px;">Result: <span id="validSigKey"></span></td>
+                    </tr>
+                    <tr>
+                        <td><b>kid</b> of the encryption key: </td>
+                        <td><input type="text" id="encKid" value="e1"/></td>
+                        <td style="font-size:32px; line-height: 32px;">Result: <span id="validEncKey"></span></td>
+                    </tr>
+                </table>
+                <br/>
+                <table>
+                    <tr>
+                        <td><b>public JWKSet</b><br/>
+                            <textarea style="width: 500px; height:20em;" id="jwkset" onchange="document.getElementById('valid').checked = false;">
+          {"keys": [
+            {
+              "kty": "RSA",
+              "e": "AQAB",
+              "use": "sig",
+              "kid": "s1",
+              "n": "psOL91wYWYyxFY9HRDfuppqkRcWpMzySY-qYpvmHM8j1-7XwDvTa5ls5Z0rEpe_cvL_yr75wwcvHzvilTQ1esmcZzp68ynhm4z9cm7HBV-JsSd7Ostpp5BJ3pRr76QiZYPj-yd3LquwTu3c5GrFq9ZjgPeq1jyrYfHnDLkRzp3CL86h1fJa4zdySU95oyVVLH1TCZCDT7uWASqaNQxoDo-rFthnNX87_GWK_SsBn3DASnxHgduFqiZ4Uxk_AgyiN6dbgpcPgrW6eW8y8FIY8ItDmLW_JtQnMmh5mvzEDMmt90nAWtXZ7NvIONdAPNB7eUrpod8ZQrWIzHzRpaSdYiw"
+            },
+            {
+              "kty": "RSA",
+              "e": "AQAB",
+              "use": "enc",
+              "kid": "e1",
+              "n": "lD0n3CWJ68RUutXndkkVb3MnJ4WqeMqTiJji9Ohp-gLd44WoQKMWPTWFqasyDrrH5DNmFi3WArhUdIQIe7rbhZFJdcFiT4bDPcUSpHyo4Yiwq99Jou-aJ5YwZa4Q3VFUBGvu-95Bt_CQSPyjiXRNWzZ4sWBdHOkYUect6WCzTfXlN-cBMjlm9_yqODA1_TXqHJLkFuyioyMaobxn5vwsvpXeTOxOMfacamM2QIsH4xxlWCm8Etr7iMLUQAZoMyCrVVj6kmYesEhzeerxgdWkadKbvKc08xBqfsdgqR65dbgYtI7O3sQbWxYfnhvebaBa34ZZ2c9RR2eOXYe14Tl-7Q"
+            }
+          ]
+        }
+                             </textarea>
+                        </td>
+                        <td><b>log console</b><br/>
+                            <div style="width: 500px; overflow:auto; height:20em;background-color: grey; color: lightgreen;" id="logConsole">
+
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <br/>
+                <p style="text-align: center;">
+                    <input type="button" onclick="check(logConsole);" value="Check Keys"/>
+                </p>
+            </div>
+        </div>
+
+        <style>
+            .icon {
+                height: 32px;
+                width: 32px;
+            }
+            .success {
+                color: lightgreen;
+            }
+            .error {
+                color: red;
+            }
+            p.success {
+                margin: 0 0 5px 0;
+                padding: 0;
+            }
+        </style>
+    </body>
+</html>
