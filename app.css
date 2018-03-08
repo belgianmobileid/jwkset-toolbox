@@ -5075,8 +5075,8 @@ tbody.collapse.show {
     display: -ms-flexbox;
     display: flex;
     -webkit-box-flex: 1;
-        -ms-flex: 1 0 0%;
-            flex: 1 0 0%;
+        -ms-flex: 1 0 0;
+            flex: 1 0 0;
     -webkit-box-orient: vertical;
     -webkit-box-direction: normal;
         -ms-flex-direction: column;
@@ -5111,8 +5111,8 @@ tbody.collapse.show {
 
   .card-group > .card {
     -webkit-box-flex: 1;
-        -ms-flex: 1 0 0%;
-            flex: 1 0 0%;
+        -ms-flex: 1 0 0;
+            flex: 1 0 0;
     margin-bottom: 0;
   }
 
