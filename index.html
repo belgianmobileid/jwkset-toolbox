@@ -4,20 +4,25 @@
     <script>
 
         var copyToClipboard = function(containerid) {
-            var range;
-            if (document.selection) {
-                range = document.body.createTextRange();
-                range.moveToElementText(document.getElementById(containerid));
-                range.select().createTextRange();
-                document.execCommand("copy");
+            if (document.selection)
+            {
+                var div = document.body.createTextRange();
 
-            } else if (window.getSelection) {
-                range = document.createRange();
-                range.selectNode(document.getElementById(containerid));
-                window.getSelection().addRange(range);
-                document.execCommand("copy");
-                alert("text copied")
+                div.moveToElementText(document.getElementById(containerid));
+                div.select();
             }
+            else
+            {
+                var div = document.createRange();
+
+                div.setStartBefore(document.getElementById(containerid));
+                div.setEndAfter(document.getElementById(containerid)) ;
+
+                window.getSelection().addRange(div);
+            }
+
+            document.execCommand("copy");
+            alert("text copied");
         };
 
         var logConsole = {
