@@ -10,8 +10,8 @@ head -n 9 e.tmp | tail -n 8 >> $2
 tail -n 7 e.tmp >> $1
 echo "," >> $1
 echo "," >> $2
-java -jar json-web-key-generator.jar -t RSA -s 2048 -u enc -i e1 -p > s.tmp
-head -n 9 e.tmp | tail -n 8 >> $2
+java -jar json-web-key-generator.jar -t RSA -s 2048 -u sig -i s1 -p > s.tmp
+head -n 9 s.tmp | tail -n 8 >> $2
 tail -n 7 s.tmp >> $1
 echo "]}" >> $1
 echo "]}" >> $2
